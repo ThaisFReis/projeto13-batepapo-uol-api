@@ -30,10 +30,11 @@ app.post("/participants", async (req, res) => {
     const name = req.body;
     const result = await db.collection("users").insertOne(
         { users: name }
-    );
-    
-    // Send response
-    res.send(result);
+    ).then(result => {
+            // Send response
+        res.status(200).send("Criado com sucesso");
+    }).catch(err => {
+        res.status(422).send(err);
 });
 
 // Get users
@@ -43,11 +44,19 @@ app.get("/participants", async (req, res) => {
     const result = await db.collection("users").find().toArray().then(users => {
         return users;
         }).catch(err => {
-            console.log(err);
+            res.status(200).send(result);
         });
+});
 
-    // Send response
-    res.send(result);
+// Get messages
+app.get("/messages", async (req, res) => {
+
+    // Get messages
+    const result = await db.collection("messages").find().toArray().then(messages => {
+        return messages;
+        }).catch(err => {
+            res.status(200).send(result);
+        });
 });
 
 // Start server
