@@ -35,6 +35,7 @@ app.post("/participants", async (req, res) => {
         res.status(200).send("Criado com sucesso");
     }).catch(err => {
         res.status(422).send(err);
+    });
 });
 
 // Get users
@@ -57,6 +58,25 @@ app.get("/messages", async (req, res) => {
         }).catch(err => {
             res.status(200).send(result);
         });
+});
+
+// Post message
+app.post("/messages", async (req, res) => {
+    
+/*  Melhorar a lógica para que o usuário não possa enviar mensagens vazias;
+    Melhorar como posta a mensagem*/
+
+    // Insert message
+    const message = req.body;
+    const result = await db.collection("messages").insertOne(
+        { message
+        }
+    ).then(result => {
+            // Send response
+        res.status(200).send("Enviado com sucesso");
+    }).catch(err => {
+        res.status(422).send(err);
+    });
 });
 
 // Start server
