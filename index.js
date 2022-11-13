@@ -62,7 +62,7 @@ app.get("/messages", async (req, res) => {
 
 // Post message
 app.post("/messages", async (req, res) => {
-    
+
 /*  Melhorar a lógica para que o usuário não possa enviar mensagens vazias;
     Melhorar como posta a mensagem*/
 
@@ -73,6 +73,23 @@ app.post("/messages", async (req, res) => {
         }
     ).then(result => {
             // Send response
+        res.status(200).send("Enviado com sucesso");
+    }).catch(err => {
+        res.status(422).send(err);
+    });
+});
+
+// Post status
+app.post("/status", async (req, res) => {
+
+    /*  Melhorar a lógica do status; */
+    // Insert status
+    const status = req.body;
+    const result = await db.collection("status").insertOne(
+        { status
+        }
+    ).then(result => {
+        // Send response
         res.status(200).send("Enviado com sucesso");
     }).catch(err => {
         res.status(422).send(err);
