@@ -18,7 +18,7 @@ const dbUrl = process.env.DB_URL || "mongodb://localhost:5500";
 const dbName = process.env.DB_NAME || "batepapoUOL";
 
 // Database connection
-const mongoClient = new MongoClient(dbUrl);
+const mongoClient = new MongoClient(dbUrl,  {useUnifiedTopology: true});
 const db = mongoClient.db(dbName);
 
 mongoClient.connect().then(() => {
@@ -107,6 +107,48 @@ app.get("/participants", async (req, res) => {
     });
 });
 
+// Post message
+app.post("/messages", async (req, res) => {
+
+    /*  Melhorar a lógica para que o usuário não possa enviar mensagens vazias;
+    Melhorar como posta a mensagem*/
+
+    const { user } = req.headers;
+    const { to, text, type } = req.body;
+
+    try {
+        const message = {
+            from: user,
+            to,
+            text,
+            type,
+            time: dayjs().format('HH:mm:ss')
+        }
+
+        // Validate message
+        const validation = messageSchema.validate(message);
+
+        if (validation.error) {
+            return res.status(422).send(validation.error.message);
+        }
+
+        // Participant exists
+        const participant = await db.collection("users").findOne({ name: user });
+
+        if (!participant) {
+            return res.status(409).send("Participant not found");
+        }
+
+        // Insert message
+        await db.collection("messages").insertOne(message);
+        res.send(201);
+    } 
+    catch (err) {
+        return res.status(500).send("Internal server error");
+    }
+
+});
+
 // Get messages
 app.get("/messages", async (req, res) => {
 
@@ -118,29 +160,11 @@ app.get("/messages", async (req, res) => {
         });
 });
 
-// Post message
-app.post("/messages", async (req, res) => {
-
-/*  Melhorar a lógica para que o usuário não possa enviar mensagens vazias;
-    Melhorar como posta a mensagem*/
-
-    // Insert message
-    const message = req.body;
-    const result = await db.collection("messages").insertOne(
-        { message
-        }
-    ).then(result => {
-            // Send response
-        res.status(200).send("Enviado com sucesso");
-    }).catch(err => {
-        res.status(422).send(err);
-    });
-});
-
+/*
 // Post status
 app.post("/status", async (req, res) => {
 
-    /*  Melhorar a lógica do status; */
+    /*  Melhorar a lógica do status; 
     // Insert status
     const status = req.body;
     const result = await db.collection("status").insertOne(
@@ -153,7 +177,7 @@ app.post("/status", async (req, res) => {
         res.status(422).send(err);
     });
 });
-
+*/
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
