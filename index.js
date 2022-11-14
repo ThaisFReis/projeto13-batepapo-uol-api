@@ -95,6 +95,27 @@ app.post("/participants", async (req, res) => {
     res.sendStatus(201);
 });
 
+
+// Get users
+app.get("/participants", async (req, res) => {
+
+    try{
+        // Get users
+        const users = await db.collection("participants").find().toArray()
+
+        //No users
+        if (!users) {
+            return res.status(404).send("Users not found");
+        }
+
+        res.send(users)
+        return
+    }
+    catch (err) {
+        return res.status(500).send("Internal server error");
+    }
+});
+
 // Post message
 app.post("/messages", async (req, res) => {
 
@@ -137,25 +158,6 @@ app.post("/messages", async (req, res) => {
 
 });
 
-// Get users
-app.get("/participants", async (req, res) => {
-
-    try{
-        // Get users
-        const users = await db.collection("participants").find().toArray()
-
-        //No users
-        if (!users) {
-            return res.status(404).send("Users not found");
-        }
-
-        res.send(users)
-    }
-    catch (err) {
-        return res.status(500).send("Internal server error");
-    }
-});
-
 // Get messages
 app.get("/messages", async (req, res) => {
 
@@ -182,9 +184,8 @@ app.get("/messages", async (req, res) => {
         });
 
         // Limit messages
-        if (limit && limit !== NaN) {
-            filteredMessages = filteredMessages.slice(-limit);
-            return res.send(filteredMessages);
+        if (limit ==! NaN) {
+            return filteredMessages.slice(-limit);
         }
 
         }).catch(err => {
