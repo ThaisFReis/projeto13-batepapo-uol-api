@@ -77,6 +77,7 @@ app.post("/participants", async (req, res) => {
         lastStatus: Date.now()
     });
 
+    /* Não  está retornando a seguinte informação
     // User message
     await db.collection("messages").insertOne({
         from: participant.name,
@@ -85,6 +86,7 @@ app.post("/participants", async (req, res) => {
         type: "status",
         time: dayjs().format('HH:mm:ss')
     });
+    */
 
     res.send(201);
 });
@@ -152,12 +154,46 @@ app.post("/messages", async (req, res) => {
 // Get messages
 app.get("/messages", async (req, res) => {
 
+    const { user } = req.headers;
+    const limit = parseInt(req.query.limit);
+
+    // Get messages
+    const messages = await db.collection("messages").find().toArray().then(messages => {
+        
+        // Filter messages
+        const filteredMessages = messages.filter(message => {
+            /* Precisa filtrar mensagens:
+                Do user, Para o user e para todos */
+
+            if (message.from === user || message.to === user || message.to === "Todos") {
+                return message;
+            }
+        });
+
+        // Limit messages
+            if (limit && limit !== NaN) {
+                filteredMessages = filteredMessages.slice(-limit);
+                return res.send(filteredMessages);
+            }
+
+        // Return messages
+        return res.status(200).send(filteredMessages);
+
+    }).catch(err => {
+        return res.status(500).send(err);
+    });
+
+
+
+
+    /*
     // Get messages
     const result = await db.collection("messages").find().toArray().then(messages => {
         return messages;
         }).catch(err => {
             res.status(200).send(result);
         });
+        */
 });
 
 /*
