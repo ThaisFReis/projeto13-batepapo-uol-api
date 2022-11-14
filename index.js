@@ -23,6 +23,12 @@ mongoClient.connect().then(() => {
     console.log(err);
 });
 
+// Schema validation
+const nameSchema = joi.object({
+    name: joi.string().min(1).required()
+});
+
+
 // Routes
 
 // Post user
