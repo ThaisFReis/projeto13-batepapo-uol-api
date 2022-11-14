@@ -50,6 +50,32 @@ app.post("/participants", async (req, res) => {
 
     // Insert participant
     const name = req.body;
+
+    // Validate name
+    const validation = nameSchema.validate(name);
+
+    if (validation.error) {
+        return res.sendStatus(422); 
+    }
+
+    // Check if user already exists
+    const user = await db.collection("participants").findOne({ name: name.name });
+
+    if (user) {
+        return res.sendStatus(409);
+    }
+
+    // Insert user
+    await db.collection("participants").insertOne({
+        users: name.name,
+        lastStatus: Date.now()
+    });
+
+    res.sendStatus(201);
+});
+
+/*
+    Se o  de cima não funcionar, voltar para essa lógica
     const result = await db.collection("users").insertOne(
         { users: name }
     ).then(result => {
@@ -58,7 +84,7 @@ app.post("/participants", async (req, res) => {
     }).catch(err => {
         res.status(422).send(err);
     });
-});
+});*/
 
 // Get users
 app.get("/participants", async (req, res) => {
