@@ -1,31 +1,36 @@
-import express from 'express';
+import express, { json } from 'express';
 import cors from 'cors';
 import dotenv from "dotenv";
-import { MongoClient, ObjectId } from 'mongodb';
+import { MongoClient } from 'mongodb';
 import joi from 'joi';
 import dayjs from 'dayjs';
 
 dotenv.config();
 
+// Database
+const dbUrl = process.env.DB_URL || "mongodb://localhost:27017";
+const dbName = process.env.DB_NAME || "batepapoUOL";
+const mongoClient = new MongoClient(dbUrl, { 
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+});
+const db = mongoClient.db(dbName);
+
+// Database connection
+mongoClient.connect().then(() => {
+    db;
+    console.log("Database connected");
+}).catch((err) => {
+    console.log(err);
+});
+
 // Server
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(json());
 
 const PORT = process.env.PORT || 5000;
 
-const dbUrl = process.env.DB_URL || "mongodb://localhost:5500";
-const dbName = process.env.DB_NAME || "batepapoUOL";
-
-// Database connection
-const mongoClient = new MongoClient(dbUrl,  {useUnifiedTopology: true});
-const db = mongoClient.db(dbName);
-
-mongoClient.connect().then(() => {
-    console.log('Connected to database');
-}).catch(err => {
-    console.log(err);
-});
 
 // Schema validation
 const nameSchema = joi.object({
@@ -43,7 +48,7 @@ const nameSchema = joi.object({
 const messageSchema = joi.object({
     from: joi.string().min(1).required(),
     to: joi.string().min(1).required(), 
-    text: joi.string().min(1).max(671088).required,
+    text: joi.string().min(1).required(),
     type: joi.string().valid('message', 'private_message').required(),
     time: joi.string()
 });
@@ -61,23 +66,23 @@ app.post("/participants", async (req, res) => {
     const validation = nameSchema.validate(participant);
 
     if (validation.error) {
-        return res.send(422); 
+        return res.sendStatus(422); 
     }
 
     // Check if user already exists
-    const user = await db.collection("users").findOne({ name: participant.name });
+    const user = await db.collection("participants").findOne({ name: participant.name });
 
     if (user) {
-        return res.send(409);
+        return res.sendStatus(409);
     }
 
     // Insert user
-    await db.collection("users").insertOne({
-        users: participant.name,
+    await db.collection("participants").insertOne({
+        name: participant.name,
         lastStatus: Date.now()
     });
 
-    /* Não  está retornando a seguinte informação
+    /* Não  está retornando a seguinte informação*/
     // User message
     await db.collection("messages").insertOne({
         from: participant.name,
@@ -86,27 +91,8 @@ app.post("/participants", async (req, res) => {
         type: "status",
         time: dayjs().format('HH:mm:ss')
     });
-    */
 
-    res.send(201);
-});
-
-// Get users
-app.get("/participants", async (req, res) => {
-
-    // Get users
-    const users = await db.collection("users").find().toArray().then(users => {
-
-        // No users
-        if (users.length === 0) {
-            return res.send(404);
-        }
-
-        // Return users
-        return res.send(users);
-    }).catch(err => {
-        console.log(err);
-    });
+    res.sendStatus(201);
 });
 
 // Post message
@@ -135,7 +121,7 @@ app.post("/messages", async (req, res) => {
         }
 
         // Participant exists
-        const participant = await db.collection("users").findOne({ name: user });
+        const participant = await db.collection("participants").findOne({ name: user });
 
         if (!participant) {
             return res.status(409).send("Participant not found");
@@ -143,7 +129,7 @@ app.post("/messages", async (req, res) => {
 
         // Insert message
         await db.collection("messages").insertOne(message);
-        res.send(201);
+        res.sendStatus(201);
     } 
     catch (err) {
         return res.status(500).send("Internal server error");
@@ -151,69 +137,123 @@ app.post("/messages", async (req, res) => {
 
 });
 
+// Get users
+app.get("/participants", async (req, res) => {
+
+    try{
+        // Get users
+        const users = await db.collection("participants").find().toArray()
+
+        //No users
+        if (!users) {
+            return res.status(404).send("Users not found");
+        }
+
+        res.send(users)
+    }
+    catch (err) {
+        return res.status(500).send("Internal server error");
+    }
+});
+
 // Get messages
 app.get("/messages", async (req, res) => {
 
-    const { user } = req.headers;
-    const limit = parseInt(req.query.limit);
+    try{
 
-    // Get messages
-    const messages = await db.collection("messages").find().toArray().then(messages => {
-        
+        const { user } = req.headers;
+        const limit = parseInt(req.query.limit);
+
+        // Get messages
+        const messages = await db.collection("messages").find().toArray().then(messages => {
+
         // Filter messages
         const filteredMessages = messages.filter(message => {
             /* Precisa filtrar mensagens:
                 Do user, Para o user e para todos */
 
             if (message.from === user || message.to === user || message.to === "Todos") {
-                return message;
+                return true;
+            }
+
+            else {
+                return false;
             }
         });
 
         // Limit messages
-            if (limit && limit !== NaN) {
-                filteredMessages = filteredMessages.slice(-limit);
-                return res.send(filteredMessages);
-            }
+        if (limit && limit !== NaN) {
+            filteredMessages = filteredMessages.slice(-limit);
+            return res.send(filteredMessages);
+        }
 
-        // Return messages
-        return res.status(200).send(filteredMessages);
-
-    }).catch(err => {
-        return res.status(500).send(err);
-    });
-
-
-
-
-    /*
-    // Get messages
-    const result = await db.collection("messages").find().toArray().then(messages => {
-        return messages;
         }).catch(err => {
-            res.status(200).send(result);
+            return res.status(500).send(err);
         });
-        */
+
+    }
+    catch (err) {
+        return res.status(500).send("Internal server error");
+    }
+
 });
 
-/*
+
 // Post status
 app.post("/status", async (req, res) => {
+    
+        const { user } = req.headers;
+    
+        // Participant exists
+        const participant = await db.collection("participants").findOne({ name: user });
 
-    /*  Melhorar a lógica do status; 
-    // Insert status
-    const status = req.body;
-    const result = await db.collection("status").insertOne(
-        { status
+        if (!participant) {
+            return res.status(409).send("Participant not found");
         }
-    ).then(result => {
-        // Send response
-        res.status(200).send("Enviado com sucesso");
-    }).catch(err => {
-        res.status(422).send(err);
-    });
+
+        // Update status
+        await db.collection("participants").updateOne({ name: user }, { $set: { lastStatus: Date.now() } });
+
+        // User message
+        await db.collection("messages").insertOne({
+            from: user,
+            to: "Todos",
+            text: "sai da sala...",
+            type: "status",
+            time: dayjs().format('HH:mm:ss')
+        });
+
+        res.sendStatus(200);
 });
-*/
+
+//  Disconnect user
+
+setInterval(async () => {
+    let timeOut = Date.now() - 90000;
+
+    const users = await db.collection("participants").find().toArray().then(users => {
+        return users;
+    }).catch(err => {
+        console.log(err);
+    });
+
+    users.forEach(async user => {
+        if (user.lastStatus >= timeOut) {
+            await db.collection("participants").deleteOne({ name:
+            user.name });
+
+            await db.collection("messages").insertOne({
+                from: user.name,
+                to: "Todos",
+                text: "saiu da saiu...",
+                type: "status",
+                time: dayjs().format('HH:mm:ss')
+            });
+        }
+    });
+}, 90000);
+
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
