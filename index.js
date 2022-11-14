@@ -7,18 +7,22 @@ import dayjs from 'dayjs';
 
 dotenv.config();
 
+// Server
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+
+const dbUrl = process.env.DB_URL || "mongodb://localhost:5500";
+const dbName = process.env.DB_NAME || "batepapoUOL";
 
 // Database connection
-const mongoClient = new MongoClient(process.env.DB_URL);
-let db;
+const mongoClient = new MongoClient(dbUrl);
+const db = mongoClient.db(dbName);
 
 mongoClient.connect().then(() => {
-    db = mongoClient.db("batepapo-uol2232222hg");
+    console.log('Connected to database');
 }).catch(err => {
     console.log(err);
 });
@@ -49,42 +53,39 @@ const messageSchema = joi.object({
 app.post("/participants", async (req, res) => {
 
     // Insert participant
-    const name = req.body;
+    const participant = req.body;
 
-    // Validate name
-    const validation = nameSchema.validate(name);
+    // Validate participant
+    const validation = nameSchema.validate(participant);
 
     if (validation.error) {
-        return res.sendStatus(422); 
+        return res.send(422); 
     }
 
     // Check if user already exists
-    const user = await db.collection("participants").findOne({ name: name.name });
+    const user = await db.collection("users").findOne({ name: participant.name });
 
     if (user) {
-        return res.sendStatus(409);
+        return res.send(409);
     }
 
     // Insert user
-    await db.collection("participants").insertOne({
-        users: name.name,
+    await db.collection("users").insertOne({
+        users: participant.name,
         lastStatus: Date.now()
     });
 
-    res.sendStatus(201);
-});
-
-/*
-    Se o  de cima não funcionar, voltar para essa lógica
-    const result = await db.collection("users").insertOne(
-        { users: name }
-    ).then(result => {
-            // Send response
-        res.status(200).send("Criado com sucesso");
-    }).catch(err => {
-        res.status(422).send(err);
+    // User message
+    await db.collection("messages").insertOne({
+        from: participant.name,
+        to: "Todos",
+        text: "entra na sala...",
+        type: "status",
+        time: dayjs().format('HH:mm:ss')
     });
-});*/
+
+    res.send(201);
+});
 
 // Get users
 app.get("/participants", async (req, res) => {
