@@ -37,13 +37,15 @@ const nameSchema = joi.object({
     to:
     text:
     type:
+    time:
 */
 
 const messageSchema = joi.object({
     from: joi.string().min(1).required(),
     to: joi.string().min(1).required(), 
-    text: joi.string().min(1).required(),
-    type: joi.string().valid('message', 'private_message').required()
+    text: joi.string().min(1).max(671088).required,
+    type: joi.string().valid('message', 'private_message').required(),
+    time: joi.string()
 });
 
 
@@ -90,12 +92,19 @@ app.post("/participants", async (req, res) => {
 // Get users
 app.get("/participants", async (req, res) => {
 
-    // Get participants
-    const result = await db.collection("users").find().toArray().then(users => {
-        return users;
-        }).catch(err => {
-            res.status(200).send(result);
-        });
+    // Get users
+    const users = await db.collection("users").find().toArray().then(users => {
+
+        // No users
+        if (users.length === 0) {
+            return res.send(404);
+        }
+
+        // Return users
+        return res.send(users);
+    }).catch(err => {
+        console.log(err);
+    });
 });
 
 // Get messages
