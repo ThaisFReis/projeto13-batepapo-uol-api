@@ -11,14 +11,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 
 // Database connection
 const mongoClient = new MongoClient(process.env.DB_URL);
 let db;
 
 mongoClient.connect().then(() => {
-    db = mongoClient.db(process.env.DB_NAME);
+    db = mongoClient.db("batepapo-uol2232222hg");
 }).catch(err => {
     console.log(err);
 });
@@ -26,6 +26,20 @@ mongoClient.connect().then(() => {
 // Schema validation
 const nameSchema = joi.object({
     name: joi.string().min(1).required()
+});
+
+/* Precisa ter para:
+    from:
+    to:
+    text:
+    type:
+*/
+
+const messageSchema = joi.object({
+    from: joi.string().min(1).required(),
+    to: joi.string().min(1).required(), 
+    text: joi.string().min(1).required(),
+    type: joi.string().valid('message', 'private_message').required()
 });
 
 
